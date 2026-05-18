@@ -1,0 +1,178 @@
+basePath: /
+definitions:
+  model.ActivationRequest:
+    properties:
+      date:
+        type: string
+      target_volume_kw:
+        type: integer
+    type: object
+  model.AllocationResult:
+    properties:
+      selected_assets:
+        items:
+          $ref: '#/definitions/model.Asset'
+        type: array
+      total_capacity_kw:
+        type: integer
+      total_cost:
+        type: number
+    type: object
+  model.Asset:
+    properties:
+      availDate:
+        description: 'format: "YYYY-MM-DD"'
+        type: string
+      capacityKW:
+        type: integer
+      fixedCost:
+        format: float64
+        type: number
+      id:
+        type: integer
+      name:
+        type: string
+      pricePerKW:
+        format: float64
+        type: number
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Microservice for TSO electrical asset activation using Hexagonal Architecture.
+  title: TSO Activation Service API
+  version: "1.0"
+paths:
+  /api/v1/activation/greedy-baseline:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Activation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ActivationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AllocationResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Activate assets using greedy baseline (in-memory sort)
+      tags:
+      - activation
+  /api/v1/activation/greedy-db:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Activation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ActivationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AllocationResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Activate assets using greedy DB (DB-sorted)
+      tags:
+      - activation
+  /api/v1/activation/knapsack-db:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Activation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ActivationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AllocationResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Activate assets using knapsack DP (DB-pruned pool)
+      tags:
+      - activation
+  /api/v1/activation/knapsack-memory:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Activation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ActivationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AllocationResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Activate assets using knapsack DP (in-memory)
+      tags:
+      - activation
+swagger: "2.0"

@@ -18,7 +18,7 @@ func NewGreedyBaseline(repo obtain.AssetRepository) *GreedyBaseline {
 }
 
 func (g *GreedyBaseline) Execute(req model.ActivationRequest) (model.AllocationResult, error) {
-	all, err := g.repo.FetchAll()
+	all, err := g.repo.FetchAllSortedByCost()
 	if err != nil {
 		return model.AllocationResult{}, err
 	}

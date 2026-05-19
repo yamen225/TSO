@@ -16,17 +16,9 @@ func NewKnapsackMemory(repo obtain.AssetRepository) *KnapsackMemory {
 }
 
 func (k *KnapsackMemory) Execute(req model.ActivationRequest) (model.AllocationResult, error) {
-	all, err := k.repo.FetchAllSortedByCost()
+	available, err := k.repo.FetchAllSortedByCost(req.Date)
 	if err != nil {
 		return model.AllocationResult{}, err
-	}
-
-	// Filter by date
-	var available []model.Asset
-	for _, a := range all {
-		if a.AvailDate.Equal(req.Date) {
-			available = append(available, a)
-		}
 	}
 
 	return knapsackSelect(available, req.TargetVolumeKW)

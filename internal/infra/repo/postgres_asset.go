@@ -44,12 +44,13 @@ const (
 	joinClause = "JOIN asset_availabilities ON asset_availabilities.asset_id = assets.id"
 )
 
-// FetchAllSortedByCost returns all assets ordered by price_per_kw ascending.
-func (r *PostgresAssetRepository) FetchAllSortedByCost() ([]model.Asset, error) {
+// FetchAllSortedByCost returns assets available on date ordered by price_per_kw ascending.
+func (r *PostgresAssetRepository) FetchAllSortedByCost(date model.Date) ([]model.Asset, error) {
 	var rows []assetRow
 	result := r.db.Table("assets").
 		Select(selectColumns).
 		Joins(joinClause).
+		Where("asset_availabilities.avail_date = ?", date).
 		Order("assets.price_per_kw ASC").
 		Scan(&rows)
 	if result.Error != nil {
@@ -58,9 +59,9 @@ func (r *PostgresAssetRepository) FetchAllSortedByCost() ([]model.Asset, error) 
 	return mapRows(rows), nil
 }
 
-// FetchPruned returns assets available on date with capacity <= volume * 1.5.
-func (r *PostgresAssetRepository) FetchPruned(date model.Date, volume int) ([]model.Asset, error) {
-	maxCap := float64(volume) * 1.5
+// FetchPruned returns assets available on date with capacity <= volume * multiplier.
+func (r *PostgresAssetRepository) FetchPruned(date model.Date, volume int, multiplier float64) ([]model.Asset, error) {
+	maxCap := float64(volume) * multiplier
 	var rows []assetRow
 	result := r.db.Table("assets").
 		Select(selectColumns).

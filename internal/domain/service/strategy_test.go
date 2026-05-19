@@ -17,18 +17,26 @@ type mockAssetRepo struct {
 	err    error
 }
 
-func (m *mockAssetRepo) FetchAllSortedByCost() ([]model.Asset, error) {
-	return m.assets, m.err
-}
-
-func (m *mockAssetRepo) FetchPruned(date model.Date, volume int) ([]model.Asset, error) {
+func (m *mockAssetRepo) FetchAllSortedByCost(date model.Date) ([]model.Asset, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	// Filter by date and capacity <= volume * 1.5
 	var result []model.Asset
 	for _, a := range m.assets {
-		if a.AvailDate.Equal(date) && float64(a.CapacityKW) <= float64(volume)*1.5 {
+		if a.AvailDate.Equal(date) {
+			result = append(result, a)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockAssetRepo) FetchPruned(date model.Date, volume int, multiplier float64) ([]model.Asset, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []model.Asset
+	for _, a := range m.assets {
+		if a.AvailDate.Equal(date) && float64(a.CapacityKW) <= float64(volume)*multiplier {
 			result = append(result, a)
 		}
 	}

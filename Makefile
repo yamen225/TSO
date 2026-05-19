@@ -1,4 +1,4 @@
-.PHONY: all build test swagger docker-up docker-down
+.PHONY: all build test test-integration swagger docker-up docker-down
 
 BINARY  := activation-service
 CMD_DIR := ./cmd/server
@@ -10,6 +10,9 @@ build:
 
 test:
 	go test -v ./...
+
+test-integration:
+	go test -v -count=1 -timeout 120s ./test/integration/
 
 swagger:
 	swag init -g $(CMD_DIR)/main.go -o docs

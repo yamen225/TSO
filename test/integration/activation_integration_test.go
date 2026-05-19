@@ -1,27 +1,35 @@
 // Package integration_test contains end-to-end HTTP tests that exercise the
 // full stack: Gin handlers → domain services → GORM repository → PostgreSQL.
 //
-// Tests are skipped automatically when DATABASE_URL is not set, so they never
-// break the unit-test suite (go test ./...). Run them with:
+// A real PostgreSQL container is started via testcontainers once for the
+// entire test run (TestMain). Migrations are applied automatically, so no
+// external database or DATABASE_URL is required. Run with:
 //
-//	DATABASE_URL="postgres://..." go test ./test/integration/
+//	go test -v -count=1 -timeout 120s ./test/integration/
 package integration_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 
 	"activation-service/internal/app/handler"
+	"activation-service/internal/db"
 	"activation-service/internal/domain/model"
 	"activation-service/internal/domain/service"
 	"activation-service/internal/infra/repo"
@@ -41,19 +49,54 @@ import (
 //   2025-06-02 → Beta, Delta, Epsilon                 (total 550 kW, no price ties)
 //   2025-06-03 → Alpha, Gamma                         (total 250 kW, no price ties)
 
-// ─── Test helpers ────────────────────────────────────────────────────────────
+// ─── Suite setup ─────────────────────────────────────────────────────────────
 
-// newRouter wires the full stack against a real database and returns a Gin
-// engine ready for httptest. It skips the test if DATABASE_URL is unset.
-func newRouter(t *testing.T) *gin.Engine {
-	t.Helper()
-	connStr := os.Getenv("DATABASE_URL")
-	if connStr == "" {
-		t.Skip("DATABASE_URL not set; skipping integration tests")
+// sharedRouter is built once in TestMain and reused by every test function.
+var sharedRouter *gin.Engine
+
+// TestMain starts a PostgreSQL container, runs migrations, and wires up a
+// single Gin router shared across all tests. One container per suite avoids
+// the overhead of spinning up and tearing down a container per test.
+func TestMain(m *testing.M) {
+	os.Exit(runSuite(m))
+}
+
+func runSuite(m *testing.M) int {
+	ctx := context.Background()
+
+	pgContainer, err := tcpostgres.Run(ctx,
+		"postgres:15-alpine",
+		tcpostgres.WithDatabase("activation"),
+		tcpostgres.WithUsername("activation"),
+		tcpostgres.WithPassword("activation"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(60*time.Second),
+		),
+	)
+	if err != nil {
+		log.Printf("could not start postgres container: %v", err)
+		return 1
+	}
+	defer pgContainer.Terminate(ctx) //nolint:errcheck
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		log.Printf("could not get connection string: %v", err)
+		return 1
+	}
+
+	if err := db.RunMigrations(connStr); err != nil {
+		log.Printf("migrations failed: %v", err)
+		return 1
 	}
 
 	assetRepo, err := repo.NewPostgresAssetRepositoryFromURL(connStr)
-	require.NoError(t, err, "connecting to database")
+	if err != nil {
+		log.Printf("could not connect to database: %v", err)
+		return 1
+	}
 
 	h := handler.NewActivationGinHandler(
 		service.NewGreedyBaseline(assetRepo),
@@ -69,7 +112,14 @@ func newRouter(t *testing.T) *gin.Engine {
 	v1.POST("/greedy-db", h.HandleGreedyDB)
 	v1.POST("/knapsack-memory", h.HandleKnapsackMemory)
 	v1.POST("/knapsack-db", h.HandleKnapsackDB)
-	return r
+	sharedRouter = r
+	return m.Run()
+}
+
+// newRouter returns the shared Gin engine wired against the testcontainer DB.
+func newRouter(t *testing.T) *gin.Engine {
+	t.Helper()
+	return sharedRouter
 }
 
 func postJSON(t *testing.T, r *gin.Engine, path string, body any) *httptest.ResponseRecorder {

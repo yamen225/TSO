@@ -8,7 +8,6 @@ services:
       POSTGRES_PASSWORD: activation
       POSTGRES_DB: activation
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5434:5432"

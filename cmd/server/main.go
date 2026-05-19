@@ -14,6 +14,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"activation-service/internal/app/handler"
+	"activation-service/internal/db"
 	"activation-service/internal/domain/service"
 	"activation-service/internal/infra/repo"
 
@@ -24,6 +25,11 @@ func main() {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
 		log.Fatal("DATABASE_URL environment variable is required")
+	}
+
+	// Run database migrations before opening the connection pool
+	if err := db.RunMigrations(connStr); err != nil {
+		log.Fatalf("migrations failed: %v", err)
 	}
 
 	// Infrastructure layer

@@ -11,46 +11,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockAssetRepo is an in-test mock satisfying obtain.AssetRepository.
+// mockAssetRepo is a dumb stub satisfying obtain.AssetRepository.
+// It returns exactly the slice configured by the test — no filtering, no sorting.
+// Each test is responsible for providing the pre-filtered, pre-sorted slice
+// that the real repo would return for the given query.
 type mockAssetRepo struct {
 	assets []model.Asset
 	err    error
 }
 
 func (m *mockAssetRepo) FetchAllSortedByCost(date model.Date) ([]model.Asset, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	var result []model.Asset
-	for _, a := range m.assets {
-		if a.AvailDate.Equal(date) {
-			result = append(result, a)
-		}
-	}
-	return result, nil
+	return m.assets, m.err
 }
 
 func (m *mockAssetRepo) FetchPruned(date model.Date, volume int, multiplier float64) ([]model.Asset, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	var result []model.Asset
-	for _, a := range m.assets {
-		if a.AvailDate.Equal(date) && float64(a.CapacityKW) <= float64(volume)*multiplier {
-			result = append(result, a)
-		}
-	}
-	return result, nil
+	return m.assets, m.err
 }
 
-// sampleAssets returns a fixed slice of 5 varying assets.
-func sampleAssets() []model.Asset {
+// poolOn20260601 returns the four assets available on 2026-06-01, sorted by
+// price/kW ascending — matching what the real repo would return.
+func poolOn20260601() []model.Asset {
 	return []model.Asset{
-		{ID: 1, Name: "Alpha",   CapacityKW: 100, FixedCost: 500.0,  PricePerKW: 5.0,  AvailDate: model.MustParseDate("2026-06-01")},
-		{ID: 2, Name: "Beta",    CapacityKW: 200, FixedCost: 800.0,  PricePerKW: 4.0,  AvailDate: model.MustParseDate("2026-06-01")},
-		{ID: 3, Name: "Gamma",   CapacityKW: 150, FixedCost: 600.0,  PricePerKW: 4.0,  AvailDate: model.MustParseDate("2026-06-01")},
-		{ID: 4, Name: "Delta",   CapacityKW: 300, FixedCost: 900.0,  PricePerKW: 3.0,  AvailDate: model.MustParseDate("2026-06-01")},
-		{ID: 5, Name: "Epsilon", CapacityKW: 50,  FixedCost: 300.0,  PricePerKW: 6.0,  AvailDate: model.MustParseDate("2026-06-02")},
+		{ID: 4, Name: "Delta", CapacityKW: 300, FixedCost: 900.0, PricePerKW: 3.0, AvailDate: model.MustParseDate("2026-06-01")},
+		{ID: 2, Name: "Beta",  CapacityKW: 200, FixedCost: 800.0, PricePerKW: 4.0, AvailDate: model.MustParseDate("2026-06-01")},
+		{ID: 3, Name: "Gamma", CapacityKW: 150, FixedCost: 600.0, PricePerKW: 4.0, AvailDate: model.MustParseDate("2026-06-01")},
+		{ID: 1, Name: "Alpha", CapacityKW: 100, FixedCost: 500.0, PricePerKW: 5.0, AvailDate: model.MustParseDate("2026-06-01")},
 	}
 }
 
@@ -60,7 +45,7 @@ func sampleAssets() []model.Asset {
 
 func TestGreedyBaseline(t *testing.T) {
 	t.Run("meets target volume with cheapest assets first", func(t *testing.T) {
-		repo := &mockAssetRepo{assets: sampleAssets()}
+		repo := &mockAssetRepo{assets: poolOn20260601()}
 		svc := service.NewGreedyBaseline(repo)
 
 		req := model.ActivationRequest{Date: model.MustParseDate("2026-06-01"), TargetVolumeKW: 350}
@@ -71,7 +56,7 @@ func TestGreedyBaseline(t *testing.T) {
 	})
 
 	t.Run("returns error when volume unattainable", func(t *testing.T) {
-		repo := &mockAssetRepo{assets: sampleAssets()}
+		repo := &mockAssetRepo{assets: poolOn20260601()} // total pool = 750kW
 		svc := service.NewGreedyBaseline(repo)
 
 		req := model.ActivationRequest{Date: model.MustParseDate("2026-06-01"), TargetVolumeKW: 10000}
@@ -115,7 +100,7 @@ func TestGreedyDB(t *testing.T) {
 	})
 
 	t.Run("returns error when volume unattainable", func(t *testing.T) {
-		repo := &mockAssetRepo{assets: sampleAssets()}
+		repo := &mockAssetRepo{assets: poolOn20260601()} // total pool = 750kW
 		svc := service.NewGreedyDB(repo)
 
 		req := model.ActivationRequest{Date: model.MustParseDate("2026-06-01"), TargetVolumeKW: 99999}
@@ -130,7 +115,7 @@ func TestGreedyDB(t *testing.T) {
 
 func TestKnapsackMemory(t *testing.T) {
 	t.Run("minimizes fixed cost to exactly meet target", func(t *testing.T) {
-		repo := &mockAssetRepo{assets: sampleAssets()}
+		repo := &mockAssetRepo{assets: poolOn20260601()}
 		svc := service.NewKnapsackMemory(repo)
 
 		req := model.ActivationRequest{Date: model.MustParseDate("2026-06-01"), TargetVolumeKW: 300}
@@ -143,7 +128,7 @@ func TestKnapsackMemory(t *testing.T) {
 	})
 
 	t.Run("returns error when volume unattainable", func(t *testing.T) {
-		repo := &mockAssetRepo{assets: sampleAssets()}
+		repo := &mockAssetRepo{assets: poolOn20260601()} // total pool = 750kW
 		svc := service.NewKnapsackMemory(repo)
 
 		req := model.ActivationRequest{Date: model.MustParseDate("2026-06-01"), TargetVolumeKW: 99999}

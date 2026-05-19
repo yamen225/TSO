@@ -16,7 +16,7 @@ type assetRow struct {
 	CapacityKW int     `gorm:"column:capacity_kw"`
 	FixedCost  float64 `gorm:"column:fixed_cost"`
 	PricePerKW float64 `gorm:"column:price_per_kw"`
-	AvailDate  string  `gorm:"column:avail_date"`
+	AvailDate  model.Date `gorm:"column:avail_date"`
 }
 
 // PostgresAssetRepository is the outbound adapter for asset data, backed by GORM.
@@ -40,12 +40,12 @@ func NewPostgresAssetRepositoryFromURL(connStr string) (*PostgresAssetRepository
 
 const (
 	selectColumns = "assets.id, assets.name, assets.capacity_kw, assets.fixed_cost, assets.price_per_kw, " +
-		"TO_CHAR(asset_availabilities.avail_date, 'YYYY-MM-DD') AS avail_date"
+		"asset_availabilities.avail_date"
 	joinClause = "JOIN asset_availabilities ON asset_availabilities.asset_id = assets.id"
 )
 
-// FetchAll returns all assets ordered by price_per_kw ascending.
-func (r *PostgresAssetRepository) FetchAll() ([]model.Asset, error) {
+// FetchAllSortedByCost returns all assets ordered by price_per_kw ascending.
+func (r *PostgresAssetRepository) FetchAllSortedByCost() ([]model.Asset, error) {
 	var rows []assetRow
 	result := r.db.Table("assets").
 		Select(selectColumns).
@@ -53,13 +53,13 @@ func (r *PostgresAssetRepository) FetchAll() ([]model.Asset, error) {
 		Order("assets.price_per_kw ASC").
 		Scan(&rows)
 	if result.Error != nil {
-		return nil, fmt.Errorf("FetchAll: %w", result.Error)
+		return nil, fmt.Errorf("FetchAllSortedByCost: %w", result.Error)
 	}
 	return mapRows(rows), nil
 }
 
 // FetchPruned returns assets available on date with capacity <= volume * 1.5.
-func (r *PostgresAssetRepository) FetchPruned(date string, volume int) ([]model.Asset, error) {
+func (r *PostgresAssetRepository) FetchPruned(date model.Date, volume int) ([]model.Asset, error) {
 	maxCap := float64(volume) * 1.5
 	var rows []assetRow
 	result := r.db.Table("assets").

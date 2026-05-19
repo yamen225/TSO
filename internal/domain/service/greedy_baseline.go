@@ -26,7 +26,7 @@ func (g *GreedyBaseline) Execute(req model.ActivationRequest) (model.AllocationR
 	// Filter by date
 	var available []model.Asset
 	for _, a := range all {
-		if a.AvailDate == req.Date {
+		if a.AvailDate.Equal(req.Date) {
 			available = append(available, a)
 		}
 	}

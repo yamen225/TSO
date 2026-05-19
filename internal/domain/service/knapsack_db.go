@@ -16,7 +16,7 @@ func NewKnapsackDB(repo obtain.AssetRepository) *KnapsackDB {
 }
 
 func (k *KnapsackDB) Execute(req model.ActivationRequest) (model.AllocationResult, error) {
-	assets, err := k.repo.FetchPruned(req.Date, req.TargetVolumeKW)
+	assets, err := k.repo.FetchPruned(req.Date, req.TargetVolumeKW, req.EffectiveMultiplier())
 	if err != nil {
 		return model.AllocationResult{}, err
 	}

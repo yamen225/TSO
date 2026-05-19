@@ -12,8 +12,17 @@ type Asset struct {
 
 // ActivationRequest is the inbound request to the domain use case.
 type ActivationRequest struct {
-	Date           Date `json:"date"`
-	TargetVolumeKW int  `json:"target_volume_kw"`
+	Date           Date    `json:"date"`
+	TargetVolumeKW int     `json:"target_volume_kw"`
+	CapMultiplier  float64 `json:"cap_multiplier,omitempty"`
+}
+
+// EffectiveMultiplier returns CapMultiplier if set, otherwise the default of 1.5.
+func (r ActivationRequest) EffectiveMultiplier() float64 {
+	if r.CapMultiplier <= 0 {
+		return 1.5
+	}
+	return r.CapMultiplier
 }
 
 // AllocationResult holds the result of an asset activation decision.

@@ -16,7 +16,7 @@ func NewGreedyDB(repo obtain.AssetRepository) *GreedyDB {
 }
 
 func (g *GreedyDB) Execute(req model.ActivationRequest) (model.AllocationResult, error) {
-	assets, err := g.repo.FetchPruned(req.Date, req.TargetVolumeKW)
+	assets, err := g.repo.FetchPruned(req.Date, req.TargetVolumeKW, req.EffectiveMultiplier())
 	if err != nil {
 		return model.AllocationResult{}, err
 	}

@@ -35,10 +35,11 @@ func TestFetchAllSortedByCost(t *testing.T) {
 		AddRow(4, "Delta", 300, 900.0, 3.0, "2026-06-01").
 		AddRow(2, "Beta", 200, 800.0, 4.0, "2026-06-01")
 
-	mock.ExpectQuery(`ORDER BY assets\.price_per_kw ASC`).WillReturnRows(rows)
+	date := model.MustParseDate("2026-06-01")
+	mock.ExpectQuery(`asset_availabilities\.avail_date`).WithArgs(date).WillReturnRows(rows)
 
 	r := repo.NewPostgresAssetRepository(db)
-	assets, err := r.FetchAllSortedByCost()
+	assets, err := r.FetchAllSortedByCost(date)
 
 	require.NoError(t, err)
 	assert.Len(t, assets, 2)
@@ -62,7 +63,7 @@ func TestFetchPruned(t *testing.T) {
 		WillReturnRows(rows)
 
 	r := repo.NewPostgresAssetRepository(db)
-	assets, err := r.FetchPruned(date, targetVolume)
+	assets, err := r.FetchPruned(date, targetVolume, 1.5)
 
 	require.NoError(t, err)
 	assert.Len(t, assets, 2)

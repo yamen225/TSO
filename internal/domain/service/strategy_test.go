@@ -17,7 +17,7 @@ type mockAssetRepo struct {
 	err    error
 }
 
-func (m *mockAssetRepo) FetchAll() ([]model.Asset, error) {
+func (m *mockAssetRepo) FetchAllSortedByCost() ([]model.Asset, error) {
 	return m.assets, m.err
 }
 

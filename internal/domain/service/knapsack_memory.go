@@ -16,7 +16,7 @@ func NewKnapsackMemory(repo obtain.AssetRepository) *KnapsackMemory {
 }
 
 func (k *KnapsackMemory) Execute(req model.ActivationRequest) (model.AllocationResult, error) {
-	all, err := k.repo.FetchAll()
+	all, err := k.repo.FetchAllSortedByCost()
 	if err != nil {
 		return model.AllocationResult{}, err
 	}

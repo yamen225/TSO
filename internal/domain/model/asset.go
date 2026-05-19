@@ -7,12 +7,12 @@ type Asset struct {
 	CapacityKW  int
 	FixedCost   float64
 	PricePerKW  float64
-	AvailDate   string // format: "YYYY-MM-DD"
+	AvailDate   Date
 }
 
 // ActivationRequest is the inbound request to the domain use case.
 type ActivationRequest struct {
-	Date         string `json:"date"`
+	Date           Date `json:"date"`
 	TargetVolumeKW int  `json:"target_volume_kw"`
 }
 

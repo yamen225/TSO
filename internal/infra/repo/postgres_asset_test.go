@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"activation-service/internal/domain/model"
 	"activation-service/internal/infra/repo"
 )
 
@@ -27,7 +28,7 @@ func newTestDB(t *testing.T) (*gorm.DB, sqlmock.Sqlmock) {
 	return db, mock
 }
 
-func TestFetchAll(t *testing.T) {
+func TestFetchAllSortedByCost(t *testing.T) {
 	db, mock := newTestDB(t)
 
 	rows := sqlmock.NewRows([]string{"id", "name", "capacity_kw", "fixed_cost", "price_per_kw", "avail_date"}).
@@ -37,7 +38,7 @@ func TestFetchAll(t *testing.T) {
 	mock.ExpectQuery(`ORDER BY assets\.price_per_kw ASC`).WillReturnRows(rows)
 
 	r := repo.NewPostgresAssetRepository(db)
-	assets, err := r.FetchAll()
+	assets, err := r.FetchAllSortedByCost()
 
 	require.NoError(t, err)
 	assert.Len(t, assets, 2)
@@ -48,7 +49,7 @@ func TestFetchAll(t *testing.T) {
 func TestFetchPruned(t *testing.T) {
 	db, mock := newTestDB(t)
 
-	date := "2026-06-01"
+	date := model.MustParseDate("2026-06-01")
 	targetVolume := 300
 	maxCap := float64(targetVolume) * 1.5
 

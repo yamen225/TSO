@@ -10,5 +10,5 @@ type AssetRepository interface {
 	FetchAllSortedByCost() ([]model.Asset, error)
 	// FetchPruned returns assets available on date with capacity <= target * 1.5,
 	// ordered by cost_per_kw ascending.
-	FetchPruned(date string, volume int) ([]model.Asset, error)
+	FetchPruned(date model.Date, volume int) ([]model.Asset, error)
 }

@@ -128,7 +128,7 @@ func TestIntegration_AllEndpoints_BadJSON_Returns400(t *testing.T) {
 // 422 for every strategy: the domain cannot meet any positive target volume.
 func TestIntegration_AllEndpoints_DateWithNoAssets_Returns422(t *testing.T) {
 	r := newRouter(t)
-	body := model.ActivationRequest{Date: "2099-01-01", TargetVolumeKW: 100}
+	body := model.ActivationRequest{Date: model.MustParseDate("2099-01-01"), TargetVolumeKW: 100}
 	for _, ep := range allEndpoints {
 		w := postJSON(t, r, ep, body)
 		assert.Equal(t, http.StatusUnprocessableEntity, w.Code, "endpoint: %s", ep)
@@ -139,7 +139,7 @@ func TestIntegration_AllEndpoints_DateWithNoAssets_Returns422(t *testing.T) {
 // A target of 300 kW cannot be met, so every strategy returns 422.
 func TestIntegration_AllEndpoints_VolumeExceedsAvailableCapacity_Returns422(t *testing.T) {
 	r := newRouter(t)
-	body := model.ActivationRequest{Date: "2025-06-03", TargetVolumeKW: 300}
+	body := model.ActivationRequest{Date: model.MustParseDate("2025-06-03"), TargetVolumeKW: 300}
 	for _, ep := range allEndpoints {
 		w := postJSON(t, r, ep, body)
 		assert.Equal(t, http.StatusUnprocessableEntity, w.Code, "endpoint: %s", ep)
@@ -151,7 +151,7 @@ func TestIntegration_AllEndpoints_VolumeExceedsAvailableCapacity_Returns422(t *t
 // two assets regardless of their algorithm.
 func TestIntegration_AllEndpoints_ExactCapacityMatch_Returns200(t *testing.T) {
 	r := newRouter(t)
-	body := model.ActivationRequest{Date: "2025-06-03", TargetVolumeKW: 250}
+	body := model.ActivationRequest{Date: model.MustParseDate("2025-06-03"), TargetVolumeKW: 250}
 	for _, ep := range allEndpoints {
 		w := postJSON(t, r, ep, body)
 		require.Equal(t, http.StatusOK, w.Code, "endpoint: %s", ep)
@@ -175,7 +175,7 @@ func TestIntegration_AllEndpoints_ExactCapacityMatch_Returns200(t *testing.T) {
 func TestIntegration_GreedyBaseline_ZeroVolume_Returns200Empty(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/greedy-baseline",
-		model.ActivationRequest{Date: "2025-06-01", TargetVolumeKW: 0})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-01"), TargetVolumeKW: 0})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Empty(t, result.SelectedAssets)
@@ -188,7 +188,7 @@ func TestIntegration_GreedyDB_ZeroVolume_Returns200Empty(t *testing.T) {
 	// FetchPruned(date, 0) → capacity cap = 0 → empty pool.
 	// greedySelect([], 0): totalCap(0) >= targetKW(0) → break → return empty 200.
 	w := postJSON(t, r, "/api/v1/activation/greedy-db",
-		model.ActivationRequest{Date: "2025-06-01", TargetVolumeKW: 0})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-01"), TargetVolumeKW: 0})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Empty(t, result.SelectedAssets)
@@ -198,7 +198,7 @@ func TestIntegration_GreedyDB_ZeroVolume_Returns200Empty(t *testing.T) {
 func TestIntegration_KnapsackMemory_ZeroVolume_Returns200Empty(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/knapsack-memory",
-		model.ActivationRequest{Date: "2025-06-01", TargetVolumeKW: 0})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-01"), TargetVolumeKW: 0})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Empty(t, result.SelectedAssets)
@@ -210,7 +210,7 @@ func TestIntegration_KnapsackMemory_ZeroVolume_Returns200Empty(t *testing.T) {
 func TestIntegration_KnapsackDB_ZeroVolume_EmptyPool_Returns422(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/knapsack-db",
-		model.ActivationRequest{Date: "2025-06-01", TargetVolumeKW: 0})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-01"), TargetVolumeKW: 0})
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 }
 
@@ -224,7 +224,7 @@ func TestIntegration_KnapsackDB_ZeroVolume_EmptyPool_Returns422(t *testing.T) {
 func TestIntegration_GreedyBaseline_PicksSuboptimalCost(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/greedy-baseline",
-		model.ActivationRequest{Date: "2025-06-02", TargetVolumeKW: 350})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-02"), TargetVolumeKW: 350})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Equal(t, []string{"Beta", "Delta"}, sortedNames(result.SelectedAssets))
@@ -238,7 +238,7 @@ func TestIntegration_GreedyBaseline_PicksSuboptimalCost(t *testing.T) {
 func TestIntegration_GreedyBaseline_PicksLowerRatioAsset_OverCheaperOption(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/greedy-baseline",
-		model.ActivationRequest{Date: "2025-06-03", TargetVolumeKW: 100})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-03"), TargetVolumeKW: 100})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Equal(t, []string{"Gamma"}, sortedNames(result.SelectedAssets))
@@ -257,7 +257,7 @@ func TestIntegration_GreedyBaseline_PicksLowerRatioAsset_OverCheaperOption(t *te
 func TestIntegration_GreedyDB_PicksSuboptimalCost(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/greedy-db",
-		model.ActivationRequest{Date: "2025-06-02", TargetVolumeKW: 350})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-02"), TargetVolumeKW: 350})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Equal(t, []string{"Beta", "Delta"}, sortedNames(result.SelectedAssets))
@@ -271,7 +271,7 @@ func TestIntegration_GreedyDB_PicksSuboptimalCost(t *testing.T) {
 func TestIntegration_GreedyDB_PicksLowerRatioAsset_OverCheaperOption(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/greedy-db",
-		model.ActivationRequest{Date: "2025-06-03", TargetVolumeKW: 100})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-03"), TargetVolumeKW: 100})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Equal(t, []string{"Gamma"}, sortedNames(result.SelectedAssets))
@@ -289,7 +289,7 @@ func TestIntegration_GreedyDB_PicksLowerRatioAsset_OverCheaperOption(t *testing.
 func TestIntegration_KnapsackMemory_FindsOptimalCombination(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/knapsack-memory",
-		model.ActivationRequest{Date: "2025-06-02", TargetVolumeKW: 350})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-02"), TargetVolumeKW: 350})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Equal(t, []string{"Delta", "Epsilon"}, sortedNames(result.SelectedAssets))
@@ -302,7 +302,7 @@ func TestIntegration_KnapsackMemory_FindsOptimalCombination(t *testing.T) {
 func TestIntegration_KnapsackMemory_PicksCheaperAssetOverGreedyChoice(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/knapsack-memory",
-		model.ActivationRequest{Date: "2025-06-03", TargetVolumeKW: 100})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-03"), TargetVolumeKW: 100})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Equal(t, []string{"Alpha"}, sortedNames(result.SelectedAssets))
@@ -320,7 +320,7 @@ func TestIntegration_KnapsackMemory_PicksCheaperAssetOverGreedyChoice(t *testing
 func TestIntegration_KnapsackDB_FindsOptimalCombination(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/knapsack-db",
-		model.ActivationRequest{Date: "2025-06-02", TargetVolumeKW: 350})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-02"), TargetVolumeKW: 350})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Equal(t, []string{"Delta", "Epsilon"}, sortedNames(result.SelectedAssets))
@@ -334,7 +334,7 @@ func TestIntegration_KnapsackDB_FindsOptimalCombination(t *testing.T) {
 func TestIntegration_KnapsackDB_PicksCheaperAssetOverGreedyChoice(t *testing.T) {
 	r := newRouter(t)
 	w := postJSON(t, r, "/api/v1/activation/knapsack-db",
-		model.ActivationRequest{Date: "2025-06-03", TargetVolumeKW: 100})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-03"), TargetVolumeKW: 100})
 	require.Equal(t, http.StatusOK, w.Code)
 	result := decodeResult(t, w)
 	assert.Equal(t, []string{"Alpha"}, sortedNames(result.SelectedAssets))
@@ -355,9 +355,9 @@ func TestIntegration_GreedyVsDP_DivergentCosts(t *testing.T) {
 	// Greedy (DB): Delta + Beta = $1700
 	// DP (DB):     Delta + Epsilon = $1200
 	wGreedy := postJSON(t, r, "/api/v1/activation/greedy-db",
-		model.ActivationRequest{Date: "2025-06-02", TargetVolumeKW: 350})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-02"), TargetVolumeKW: 350})
 	wDP := postJSON(t, r, "/api/v1/activation/knapsack-db",
-		model.ActivationRequest{Date: "2025-06-02", TargetVolumeKW: 350})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-02"), TargetVolumeKW: 350})
 
 	require.Equal(t, http.StatusOK, wGreedy.Code)
 	require.Equal(t, http.StatusOK, wDP.Code)
@@ -374,9 +374,9 @@ func TestIntegration_GreedyVsDP_DivergentCosts(t *testing.T) {
 	// Greedy (DB): Gamma = $600  (lower price/kW ratio, but higher absolute cost)
 	// DP (DB):     Alpha = $500
 	wGreedy2 := postJSON(t, r, "/api/v1/activation/greedy-db",
-		model.ActivationRequest{Date: "2025-06-03", TargetVolumeKW: 100})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-03"), TargetVolumeKW: 100})
 	wDP2 := postJSON(t, r, "/api/v1/activation/knapsack-db",
-		model.ActivationRequest{Date: "2025-06-03", TargetVolumeKW: 100})
+		model.ActivationRequest{Date: model.MustParseDate("2025-06-03"), TargetVolumeKW: 100})
 
 	require.Equal(t, http.StatusOK, wGreedy2.Code)
 	require.Equal(t, http.StatusOK, wDP2.Code)

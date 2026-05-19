@@ -36,7 +36,7 @@ var sampleResult = model.AllocationResult{
 	TotalCost:       900.0,
 }
 
-var validPayload = model.ActivationRequest{Date: "2026-06-01", TargetVolumeKW: 300}
+var validPayload = model.ActivationRequest{Date: model.MustParseDate("2026-06-01"), TargetVolumeKW: 300}
 
 func setupRouter(h *handler.ActivationGinHandler) *gin.Engine {
 	r := gin.New()
